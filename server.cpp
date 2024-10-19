@@ -25,7 +25,7 @@ int main() {
     }
 
     // Set socket options
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
+    // setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
 
     // Bind the socket to port 8080
     address.sin_family = AF_INET;
