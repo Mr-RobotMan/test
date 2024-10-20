@@ -42,6 +42,8 @@ int main() {
     // Listen for incoming connections
     listen(server_fd, 3);
 
+    std::cout << "Waiting for connections..." << std::endl;
+
     // Accept an incoming connection
     if ((new_socket = accept(server_fd, (struct sockaddr*)&address, &addrlen)) == INVALID_SOCKET) {
         std::cerr << "Accept failed" << std::endl;
@@ -50,18 +52,37 @@ int main() {
         return -1;
     }
 
-    // Read data from the client
-    recv(new_socket, buffer, sizeof(buffer), 0);
-    std::cout << "Message from client: " << buffer << std::endl;
+    std::cout << "Connection established!" << std::endl;
 
-    // Send a response
-    const char* message = "Hello from server!";
-    send(new_socket, message, strlen(message), 0);
+    // Keep the connection open to receive and send multiple messages
+    while (true) {
+        // Clear the buffer
+        memset(buffer, 0, sizeof(buffer));
+        // Server remains unchanged but needs to keep the loop active
+    while (true) {
+        // Clear the buffer
+        memset(buffer, 0, sizeof(buffer));
 
-    // Close the socket
+        // Read data from the client
+        int bytesRead = recv(new_socket, buffer, sizeof(buffer) - 1, 0);
+        if (bytesRead <= 0) {
+            std::cerr << "Read failed or client disconnected." << std::endl;
+            break; // Exit the loop if there's an issue
+        }
+
+        std::cout << "Message from client: " << buffer << std::endl;
+
+        // Send a response
+        std::string response = "Received: " + std::string(buffer);
+        send(new_socket, response.c_str(), response.length(), 0);
+}
+
+
+    // Close the sockets
     closesocket(new_socket);
     closesocket(server_fd);
     WSACleanup();
 
     return 0;
+}
 }

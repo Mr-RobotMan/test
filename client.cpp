@@ -1,12 +1,13 @@
 #include <iostream>
 #include <winsock2.h>
-#include <ws2tcpip.h> // For inet_addr
+#include <ws2tcpip.h> // For compatibility and additional functions
+#include <string>
 #pragma comment(lib, "ws2_32.lib") // Link with Ws2_32.lib
 
 int main() {
     WSADATA wsaData;
-    int sock;
-    struct sockaddr_in serv_addr;
+    int client_fd;
+    struct sockaddr_in server_address;
     char buffer[1024] = {0};
 
     // Initialize Winsock
@@ -15,45 +16,57 @@ int main() {
         return -1;
     }
 
-    // Create socket
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
-        std::cerr << "Socket creation error" << std::endl;
+    // Create socket file descriptor
+    if ((client_fd = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
+        std::cerr << "Socket creation failed" << std::endl;
         WSACleanup();
         return -1;
     }
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(8080);
+    // Set up server address and port
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(8080);
 
-    // Convert IPv4 and IPv6 addresses from text to binary
-    serv_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Use inet_addr here
+    // Use inet_addr instead of inet_pton for IPv4 address conversion
+    server_address.sin_addr.s_addr = inet_addr("127.0.0.1"); // Change IP if needed
 
-    // Check for address conversion error
-    if (serv_addr.sin_addr.s_addr == INADDR_NONE) {
-        std::cerr << "Invalid address" << std::endl;
-        closesocket(sock);
+    // Connect to the server
+    if (connect(client_fd, (struct sockaddr*)&server_address, sizeof(server_address)) == SOCKET_ERROR) {
+        std::cerr << "Connection failed" << std::endl;
+        closesocket(client_fd);
         WSACleanup();
         return -1;
     }
 
-    // Connect to server
-    if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == SOCKET_ERROR) {
-        std::cerr << "Connection Failed" << std::endl;
-        closesocket(sock);
-        WSACleanup();
-        return -1;
+    std::cout << "Connected to server. You can start typing your messages." << std::endl;
+
+    // Interactive communication with the server
+    while (true) {
+        std::string user_input;
+        std::cout << "You: ";
+        std::getline(std::cin, user_input);
+
+        // Exit loop if user types "exit"
+        if (user_input == "exit") {
+            break;
+        }
+
+        // Send user input to the server
+        send(client_fd, user_input.c_str(), user_input.length(), 0);
+
+        // Clear the buffer and receive response from server
+        memset(buffer, 0, sizeof(buffer));
+        int bytesRead = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+        if (bytesRead <= 0) {
+            std::cerr << "Server disconnected or read failed." << std::endl;
+            break;
+        }
+
+        std::cout << "Server: " << buffer << std::endl;
     }
-
-    // Send message to server
-    const char* message = "Hello from client!";
-    send(sock, message, strlen(message), 0);
-
-    // Receive server response
-    recv(sock, buffer, sizeof(buffer), 0);
-    std::cout << "Message from server: " << buffer << std::endl;
 
     // Close the socket
-    closesocket(sock);
+    closesocket(client_fd);
     WSACleanup();
 
     return 0;
